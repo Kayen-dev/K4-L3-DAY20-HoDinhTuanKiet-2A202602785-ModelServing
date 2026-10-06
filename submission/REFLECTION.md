@@ -110,9 +110,25 @@ CPU threads không sửa được bottleneck: sweep `-t 1..16` gần như phẳn
 
 ---
 
-## 6. Bonus  *(optional)*
+## 6. Bonus — GPU offload sweep  *(B2 + B3)*
 
-Không thực hiện bonus; báo cáo tập trung vào base track.
+**Change:** Tắt GPU offload, từ `-ngl 99` về `-ngl 0`.
+
+```text
+before:  20.7 tok/s (-ngl 99, full Vulkan offload)
+after:   27.2 tok/s (-ngl 0, CPU-only)
+speedup: 1.31×
+```
+
+Full offload chỉ đạt 76% CPU-only và throughput giảm gần đơn điệu khi chuyển thêm
+layer lên GPU. Đây không phải thiếu VRAM: model Q4 chỉ 0.50 GB, nhỏ hơn nhiều so với
+2 GB của MX110, và không có điểm gãy do spill. Với model nhỏ này, CPU i5-8265U dùng
+AVX2 và system memory nhanh hơn các kernel Vulkan trên MX110; dispatch,
+synchronization và biên host/device tạo overhead mà workload không đủ lớn để bù.
+
+`-ngl 32` và `-ngl 99` gần như phẳng (20.9 so với 20.7 tok/s), cho thấy sau khi đã
+chuyển hết layer hữu ích thì tăng giá trị knob không còn giúp. Vì vậy lựa chọn đúng
+trên máy này là CPU-only, trái với giả định “có GPU thì full offload luôn nhanh hơn”.
 
 ---
 
@@ -128,6 +144,7 @@ tố quyết định trên runtime cụ thể.
 
 - [x] `hardware.json` và `models/active.json` có số liệu local
 - [x] Đủ report benchmark, tuning, serving, batching và integration
+- [x] Bonus GPU offload sweep có before/after và giải thích cơ chế
 - [x] Không còn placeholder bắt buộc trong `benchmarks/*.md`
 - [x] Sáu ảnh đại diện cho năm checkpoint; mục 3 tách thành `03a-serve.png` và `03b-smoke.png`
 - [x] Không commit model weights, runtime, `.venv` hay `.env`
